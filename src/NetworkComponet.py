@@ -88,7 +88,7 @@ class LinearLayer():
     
         self.output = T.dot(self.inpt, self.w)
 
-def _dropout_from_layer(layer, p=0.5):
+def dropout_from_layer(layer, p=0.5):
     """p is the probablity of dropping a unit
     """
     rng = np.random.RandomState(1234)

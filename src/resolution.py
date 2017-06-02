@@ -88,7 +88,7 @@ if args.type == "nn_train":
     dev_instances = training_instances[:int(DEV_PROB*len(training_instances))]
     train_instances = training_instances[int(DEV_PROB*len(training_instances))+1:]
 
-    train_test_instances = training_instances[:int(DEV_PROB*len(training_instances))] # 提取出一部分train data 看在train的效果
+    train_test_instances = train_instances[:int(DEV_PROB*len(training_instances))] # 提取出一部分train data 看在train的效果
 
     dev_hits = 0
     dev_iteration = 0

@@ -150,8 +150,8 @@ class NetWork():
 
         lr = T.scalar()
         
-        #updates = lasagne.updates.sgd(cost, self.params, lr)
-        updates = lasagne.updates.rmsprop(cost, self.params,0.001)
+        updates = lasagne.updates.sgd(cost, self.params, lr)
+        #updates = lasagne.updates.rmsprop(cost, self.params,0.001)
         #updates = lasagne.updates.adadelta(cost, self.params,0.01)
         #updates = lasagne.updates.adam(cost, self.params,0.001)
 

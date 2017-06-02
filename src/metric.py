@@ -49,9 +49,9 @@ def get_prf(anaphorics_result,predict_result):
     else:
         F = 2.0/(1.0/P + 1.0/R)
 
-    print "P:",P
-    print "R:",R
-    print "F:",F
+    #print "P:",P
+    #print "R:",R
+    #print "F:",F
 
     return P,R,F
 

@@ -118,8 +118,8 @@ class NetWork():
         w_attention_zp,b_attention = init_weight(n_hidden*2,1,pre="attention_zp",ones=False) 
         self.params += [w_attention_zp,b_attention]
 
-        w_attention_np,b_u = init_weight(n_hidden*2,1,pre="attention_np",ones=False) 
-        self.params += [w_attention_np]
+        #w_attention_np,b_u = init_weight(n_hidden*2,1,pre="attention_np",ones=False) 
+        #self.params += [w_attention_np]
 
         w_attention_np_rnn,b_u = init_weight(n_hidden*4,1,pre="attention_np_rnn",ones=False) 
         self.params += [w_attention_np_rnn]

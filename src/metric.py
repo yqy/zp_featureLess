@@ -7,7 +7,6 @@ import math
 import timeit
 import numpy
 import random
-random.seed(110)
 
 from conf import *
 import word2vec
@@ -16,6 +15,8 @@ import generate_instance
 
 import cPickle
 sys.setrecursionlimit(1000000)
+
+random.seed(args.random_seed)
 
 def get_prf(anaphorics_result,predict_result):
     ## 如果 ZP 是负例 则没有anaphorics_result

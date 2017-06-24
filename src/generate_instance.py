@@ -8,7 +8,6 @@ import timeit
 import numpy
 import random
 from subprocess import *
-random.seed(110)
 
 from conf import *
 from buildTree import get_info_from_file
@@ -17,6 +16,7 @@ import get_dir
 import get_feature
 import word2vec
 
+random.seed(args.random_seed)
 
 import cPickle
 sys.setrecursionlimit(1000000)

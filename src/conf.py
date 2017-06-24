@@ -16,6 +16,7 @@ parser.add_argument("-lr",default=0.03,type=float,help="Learning Rate")
 parser.add_argument("-batch",default=15,type=int,help="batch size")
 parser.add_argument("-dev_prob",default=0.1,type=float,help="probability of development set")
 parser.add_argument("-dropout_prob",default=0.5,type=float,help="probability of dropout")
+parser.add_argument("-random_seed",default=110,type=int,help="random seed")
 
 args = parser.parse_args()
 

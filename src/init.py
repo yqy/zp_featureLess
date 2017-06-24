@@ -2,8 +2,9 @@ from __future__ import absolute_import
 from keras import backend as K
 import numpy as np
 import theano
+from conf import *
 
-np.random.seed(1234)
+np.random.seed(args.random_seed)
 
 def get_fans(shape, dim_ordering='th'):
     if len(shape) == 2:

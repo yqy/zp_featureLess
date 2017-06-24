@@ -8,7 +8,6 @@ import timeit
 import numpy
 import random
 from subprocess import *
-random.seed(110)
 
 from conf import *
 from buildTree import get_info_from_file
@@ -30,6 +29,7 @@ if(len(sys.argv) <= 1):
 
 print >> sys.stderr, os.getpid()
 
+random.seed(args.random_seed)
 
 if args.type == "nn_train":
 

@@ -13,6 +13,7 @@ from theano.tensor.signal import downsample
 
 from theano.compile.nanguardmode import NanGuardMode
 from conf import *
+from init import *
 
 
 import lasagne
@@ -20,47 +21,11 @@ import lasagne
 #theano.config.exception_verbosity="high"
 #theano.config.optimizer="fast_compile"
 
-#aaaaa
-
 #activation function
 def linear(z): return z
 def ReLU(z): return T.maximum(0.0, z)
 from theano.tensor.nnet import sigmoid
 from theano.tensor import tanh
-
-#### Constants
-
-def init_weight(n_in,n_out,activation_fn=sigmoid,pre="",uni=True,ones=False):
-    rng = np.random.RandomState(1234)
-    if uni:
-        W_values = np.asarray(rng.normal(size=(n_in, n_out), scale= .01, loc = .0), dtype = theano.config.floatX)
-    else:
-        W_values = np.asarray(
-            rng.uniform(
-                low=-np.sqrt(6. / np.sqrt(n_in + n_out)),
-                high=np.sqrt(6. / np.sqrt(n_in + n_out)),
-                size=(n_in, n_out)
-            ),
-            dtype=theano.config.floatX
-        )
-        if activation_fn == theano.tensor.nnet.sigmoid:
-            W_values *= 4
-            W_values /= 6
-
-    b_values = np.zeros((n_out,), dtype=theano.config.floatX)
-
-    if ones:
-        b_values = np.ones((n_out,), dtype=theano.config.floatX)
-
-    w = theano.shared(
-        value=W_values,
-        name='%sw'%pre, borrow=True
-    )
-    b = theano.shared(
-        value=b_values,
-        name='%sb'%pre, borrow=True
-    )
-    return w,b
 
 class Layer():
     def __init__(self,n_in,n_out,inpt,activation_fn=tanh):
@@ -75,41 +40,12 @@ class Layer():
     
         self.output = activation_fn(T.dot(self.inpt, self.w) + self.b)
 
-class LinearLayer():
-    def __init__(self,n_in,n_out,inpt,activation_fn=tanh):
-        self.params = []
-        if inpt:
-            self.inpt = inpt
-        else:
-            self.inpt= T.matrix("inpt")
-        self.w,self.b = init_weight(n_in,n_out,pre="MLP_")
-        self.params.append(self.w) 
-        #self.params.append(self.b) 
-    
-        self.output = T.dot(self.inpt, self.w)
-
-def dropout_from_layer(layer, p=0.5):
-    """p is the probablity of dropping a unit
-    """
-    rng = np.random.RandomState(1234)
-    srng = theano.tensor.shared_randomstreams.RandomStreams(
-            rng.randint(999999))
-    # p=1-p because 1's indicate keep and p is prob of dropping
-    mask = srng.binomial(n=1, p=1-p, size=layer.shape)
-    # The cast is important because
-    # int * float32 = float64 which pulls things off the gpu
-    output = layer * T.cast(mask, theano.config.floatX)
-    return output
 
 class LSTM():
     def __init__(self,n_in,n_hidden,x=None,prefix=""):
          
         self.params = []
         self.x = x
-        #if x:
-        #    self.x = x
-        #else:
-        #    self.x = T.matrix("x")
 
         wf_x,bf = init_weight(n_in,n_hidden,pre="%s_lstm_f_x_"%prefix) 
         self.params += [wf_x,bf]
@@ -161,8 +97,71 @@ class LSTM():
         h_t = ot*tanh(c_t)
         return h_t,c_t
 
+class sub_LSTM():
+    def __init__(self,n_in,n_hidden,x=None,xc=None,prefix=""):
+         
+        self.params = []
+        self.x = x
+        self.xc = xc
+
+        wf_x,bf = init_weight(n_in,n_hidden,pre="%s_lstm_f_x_"%prefix) 
+        self.params += [wf_x,bf]
+
+        wi_x,bi = init_weight(n_in,n_hidden,pre="%s_lstm_i_x_"%prefix) 
+        self.params += [wi_x,bi]
+
+        wc_x,bc = init_weight(n_in,n_hidden,pre="%s_lstm_c_x_"%prefix) 
+        self.params += [wc_x,bc]
+
+        wo_x,bo = init_weight(n_in,n_hidden,pre="%s_lstm_o_x_"%prefix) 
+        self.params += [wo_x,bo]
+
+
+        wf_h,b_h = init_weight(n_hidden,n_hidden,pre="%s_lstm_f_h_"%prefix)
+        self.params += [wf_h]     
+
+        wi_h,b_h = init_weight(n_hidden,n_hidden,pre="%s_lstm_i_h_"%prefix)
+        self.params += [wi_h]     
+
+        wc_h,b_h = init_weight(n_hidden,n_hidden,pre="%s_lstm_c_h_"%prefix)
+        self.params += [wc_h]     
+
+        wo_h,b_h = init_weight(n_hidden,n_hidden,pre="%s_lstm_o_h_"%prefix)
+        self.params += [wo_h]     
+
+        h_t_0 = theano.shared(np.zeros(n_hidden, dtype=theano.config.floatX))
+        c_t_0 = theano.shared(np.zeros(n_hidden, dtype=theano.config.floatX))
+
+        [h,c],r = theano.scan(self.lstm_recurrent_fn, sequences = self.x,
+                       outputs_info = [h_t_0,c_t_0],
+                       non_sequences = [wf_x,wf_h,bf,wi_x,wi_h,bi,wc_h,wc_x,bc,wo_x,wo_h,bo])
+
+        [hc,cc],rc = theano.scan(self.lstm_recurrent_fn, sequences = self.xc,
+                       outputs_info = [h_t_0,c_t_0],
+                       non_sequences = [wf_x,wf_h,bf,wi_x,wi_h,bi,wc_h,wc_x,bc,wo_x,wo_h,bo])
+
+        #self.last_hidden = h[-1]
+        self.all_hidden = h
+        self.all_hiddenc = hc
+        self.nn_out = h[-1] - hc[-1]
+
+    def lstm_recurrent_fn(self,x,h_t_1,c_t_1,wf_x,wf_h,bf,wi_x,wi_h,bi,wc_h,wc_x,bc,wo_x,wo_h,bo):
+        ft = sigmoid(T.dot(h_t_1,wf_h) + T.dot(x,wf_x) + bf)
+
+        it = sigmoid(T.dot(h_t_1,wi_h) + T.dot(x,wi_x) + bi)
+
+        ot = sigmoid(T.dot(h_t_1,wo_h) + T.dot(x,wo_x) + bo)
+
+        ct_ = tanh(T.dot(h_t_1,wc_h) + T.dot(x,wc_x) + bc)
+
+        c_t = ft*c_t_1 + it*ct_
+
+        h_t = ot*tanh(c_t)
+        return h_t,c_t
+
+
 class LSTM_batch():
-    def __init__(self,n_in,n_hidden,x=T.tensor3("x"),mask=T.matrix("mask"),prefix=""):
+    def __init__(self,n_in,n_hidden,x,mask,prefix=""):
          
         self.params = []
         if x is not None:
@@ -179,7 +178,6 @@ class LSTM_batch():
     
         nmask = T.transpose(self.mask,axes=(1,0))
         nx = T.transpose(self.x,axes=(1,0,2))
-
 
         wf_x,bf = init_weight(n_in,n_hidden,pre="%s_lstm_f_x_"%prefix) 
         self.params += [wf_x,bf]
@@ -625,27 +623,16 @@ class RNN():
         h_t = sigmoid(T.dot(h_t_1, w_h) + T.dot(x, w_in) + b)
         return h_t
 
-def init_weight_file(fn,dimention=100,pre="embedding"):
-    f = open(fn)
-    numnum = 1 
-    oo = []
-    oo.append([0.0]*dimention)
-    while True:
-        line = f.readline()
-        if not line:break
-        line = line.strip().split(" ")[1:]
-        numnum += 1
-        if numnum%100000 == 0:print >> sys.stderr,numnum
-        out = [float(t.strip()) for t in line]
-        if not len(out) == dimention:continue
-        oo.append(out)
-    #print oo
-    W_values = np.asarray(oo,dtype = theano.config.floatX)
-    #print oo
-    #W_values = np.array(oo)
-    #print W_values.shape
-    w = theano.shared(
-        value=W_values,
-        name='%sw'%pre, borrow=True
-    )   
-    return w
+def dropout_from_layer(layer, p=0.5):
+    """p is the probablity of dropping a unit
+    """
+    rng = np.random.RandomState(1234)
+    srng = theano.tensor.shared_randomstreams.RandomStreams(
+            rng.randint(999999))
+    # p=1-p because 1's indicate keep and p is prob of dropping
+    mask = srng.binomial(n=1, p=1-p, size=layer.shape)
+    # The cast is important because
+    # int * float32 = float64 which pulls things off the gpu
+    output = layer * T.cast(mask, theano.config.floatX)
+    return output
+
